@@ -3,7 +3,6 @@
 #include "core/object/class_db.h"
 #include "core/object/method_bind.h"
 #include "core/object/object.h"
-#include "modules/inventories/item.h"
 
 void ItemData::_bind_methods() {
     ClassDB::bind_static_method("ItemData", D_METHOD("register", "id", "data"), &ItemData::register_data);
