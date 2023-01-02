@@ -37,7 +37,7 @@ void Inventory::add_to_cache(StringName id, int diff) {
 
 void Inventory::invalidate_cache() {
     cache.clear();
-    for (uint i = 0; i < items.size(); i++) {
+    for (int i = 0; i < (int)items.size(); i++) {
         Ref<Item> item = items[i];
         if (!Item::is_empty_or_null(item)) {
             add_to_cache(item->get_id(), item->get_count());
@@ -93,7 +93,7 @@ int Inventory::get_size() const {
 }
 
 void Inventory::set_size(int size) {
-    for (uint i = size; i < items.size();) {
+    for (int i = size; i < (int)items.size();) {
         set_slot(i, Ref<Item>(nullptr));
     }
     items.resize(size);
@@ -102,7 +102,7 @@ void Inventory::set_size(int size) {
 
 TypedArray<Item> Inventory::get_items() const {
     TypedArray<Item> output;
-    for (uint i = 0; i < items.size(); i++) {
+    for (int i = 0; i < (int)items.size(); i++) {
         output.append(peek_slot(i));
     }
     return output;
@@ -153,7 +153,7 @@ Ref<Item> Inventory::peek_slot(int slot_id) const {
 
 Ref<Item> Inventory::take_item(StringName id, int count) {
     Ref<Item> output = Ref<Item>(memnew(Item(id, 0)));
-    for (uint i = 0; i < items.size(); i++) {
+    for (int i = 0; i < (int)items.size(); i++) {
         Ref<Item> item = peek_slot(i);
         if (!Item::is_empty_or_null(item) && item->get_id() == id) {
             int output_new_count = output->get_count() + item->get_count();
@@ -207,7 +207,7 @@ int Inventory::add_item(Ref<Item> item) {
         return 0;
     }
     int stack_size = item->get_data()->get_stack_size();
-    for (uint i = 0; i < items.size(); i++) {
+    for (int i = 0; i < (int)items.size(); i++) {
         Ref<Item> my_item = peek_slot(i);
         if (Item::is_empty_or_null(my_item)) {
             set_slot(i, item);

@@ -25,10 +25,10 @@ First of all, this is a Godot module that **must** be built as part of the engin
  - See [the Compiling section of the Godot docs](https://docs.godotengine.org/en/latest/development/compiling/index.html), particularly [this section on custom modules](https://docs.godotengine.org/en/latest/development/compiling/introduction_to_the_buildsystem.html#custom-modules).
 
 Once you are running a build of the engine with this module, you can follow these steps 
- 1. Create the texture atlas for the items - It must be at `res://texture-atlas.png`!
+ 1. Create the texture for each item.
  2. Write item scripts extending `ItemData`. They can be in any language, as long as they can be instantiated before registering!
  3. Register the items before any items are loaded. 
-   - Use the `ItemData.register(StringName id, ItemData data)` static function to register the items.
+   - Use the `ItemRegistry.register(StringName id, ItemData data)` static function to register the items.
    - Make sure to instantiate the scripts with the .new() function!
  4. Add an inventory instance somewhere in the project that can be used by inventory slots.
    - Make sure to set the `size` property or the inventory will not work!

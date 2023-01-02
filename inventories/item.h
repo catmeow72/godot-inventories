@@ -26,34 +26,47 @@ class Item;
 
 class ItemData : public Resource {
 	GDCLASS(ItemData, Resource);
+	friend class ItemRegistry;
 protected:
 	static void _bind_methods();
-	Rect2i atlas_rect;
+	Ref<Texture2D> texture;
 	String display_name;
 	int stack_size;
-	static HashMap<StringName, Ref<ItemData>> data;
-	static Ref<Texture2D> atlas;
-	static LocalVector<StringName> registered;
 	void pre_unregister();
+	ItemUseResult use_item(Ref<Item> item, Node* owner);
 public:
 	int get_stack_size();
 	void set_stack_size(int stack_size);
-	Rect2i get_atlas_rect();
-	void set_atlas_rect(Rect2i atlas_rect);
+	Ref<Texture2D> get_texture();
+	void set_texture(Ref<Texture2D> image);
 	String get_display_name();
 	void set_display_name(String display_name);
 	GDVIRTUAL2RC(ItemUseResult, _use_item, Ref<Item>, Node *);
 	GDVIRTUAL0C(_pre_unregister);
-	ItemUseResult use_item(Ref<Item> item, Node *owner);
-	Ref<AtlasTexture> get_texture();
-	static void register_data(StringName id, Ref<ItemData> data);
-	static void unregister_data(StringName id);
-	static void unregister_all();
-	static Ref<ItemData> get_data(StringName id);
-	static void register_hook();
-	static void unregister_hook();
 	ItemData();
 	~ItemData();
+};
+
+class ItemRegistry : public Node {
+	GDCLASS(ItemRegistry, Node);
+protected:
+	static void _bind_methods();
+
+	HashMap<StringName, Ref<ItemData>> data;
+	LocalVector<StringName> registered;
+	static ItemRegistry* singleton;
+public:
+	_ALWAYS_INLINE_ static ItemRegistry* get_singleton() { return singleton; }
+	Ref<ItemData> get_data(StringName id);
+	Dictionary get_all_data();
+	void set_all_data(Dictionary data);
+	ItemUseResult use_item(Ref<Item> item, Node* owner);
+	void register_data(StringName id, Ref<ItemData> data);
+	void unregister_data(StringName id);
+	void unregister_all();
+	ItemRegistry();
+	~ItemRegistry();
+
 };
 
 class Item : public Resource {

@@ -5,40 +5,24 @@
 #include "core/object/object.h"
 
 void ItemData::_bind_methods() {
-    ClassDB::bind_static_method("ItemData", D_METHOD("register", "id", "data"), &ItemData::register_data);
-    ClassDB::bind_static_method("ItemData", D_METHOD("unregister", "id"), &ItemData::unregister_data);
-    ClassDB::bind_static_method("ItemData", D_METHOD("get_data", "id"), &ItemData::get_data);
     ClassDB::bind_method(D_METHOD("get_stack_size"), &ItemData::get_stack_size);
     ClassDB::bind_method(D_METHOD("set_stack_size", "stack_size"), &ItemData::set_stack_size);
-    ClassDB::bind_method(D_METHOD("get_atlas_rect"), &ItemData::get_atlas_rect);
-    ClassDB::bind_method(D_METHOD("set_atlas_rect", "atlas_rect"), &ItemData::set_atlas_rect);
+    ClassDB::bind_method(D_METHOD("get_texture"), &ItemData::get_texture);
+    ClassDB::bind_method(D_METHOD("set_texture", "texture"), &ItemData::set_texture);
     ClassDB::bind_method(D_METHOD("get_display_name"), &ItemData::get_display_name);
     ClassDB::bind_method(D_METHOD("set_display_name", "display_name"), &ItemData::set_display_name);
     ClassDB::bind_method(D_METHOD("use_item", "item", "owner"), &ItemData::use_item);
-    ClassDB::bind_method(D_METHOD("get_texture"), &ItemData::get_texture);
     GDVIRTUAL_BIND(_use_item, "item", "owner");
     GDVIRTUAL_BIND(_pre_unregister);
 
     ADD_PROPERTY(PropertyInfo(Variant::INT, "stack_size"), "set_stack_size", "get_stack_size");
-    ADD_PROPERTY(PropertyInfo(Variant::RECT2I, "atlas_rect"), "set_atlas_rect", "get_atlas_rect");
+    ADD_PROPERTY(PropertyInfo(Variant::RECT2I, "texture"), "set_texture", "get_texture");
     ADD_PROPERTY(PropertyInfo(Variant::STRING, "display_name"), "set_display_name", "get_display_name");
     BIND_ENUM_CONSTANT(ITEM_USE_RESULT_CONSUME);
     BIND_ENUM_CONSTANT(ITEM_USE_RESULT_NONE);
     BIND_ENUM_CONSTANT(ITEM_USE_RESULT_FAIL);
 }
 
-Ref<Texture2D> ItemData::atlas = Ref<Texture2D>(nullptr);
-HashMap<StringName, Ref<ItemData>> ItemData::data = HashMap<StringName, Ref<ItemData>>();
-LocalVector<StringName> ItemData::registered = LocalVector<StringName>();
-
-void ItemData::unregister_hook() {
-    atlas = Ref<Texture2D>(nullptr);
-    registered.clear();
-    data.clear();
-}
-
-void ItemData::register_hook() {
-}
 
 int ItemData::get_stack_size() {
     return stack_size;
@@ -48,12 +32,12 @@ void ItemData::set_stack_size(int stack_size) {
     this->stack_size = stack_size;
 }
 
-Rect2i ItemData::get_atlas_rect() {
-    return atlas_rect;
+Ref<Texture2D> ItemData::get_texture() {
+    return texture;
 }
 
-void ItemData::set_atlas_rect(Rect2i atlas_rect) {
-    this->atlas_rect = atlas_rect;
+void ItemData::set_texture(Ref<Texture2D> texture) {
+    this->texture = texture;
 }
 
 String ItemData::get_display_name() {
@@ -64,39 +48,8 @@ void ItemData::set_display_name(String display_name) {
     this->display_name = display_name;
 }
 
-void ItemData::register_data(StringName id, Ref<ItemData> new_data) {
-    ERR_FAIL_NULL_MSG(new_data, vformat("Attempt to register null data to '%s'!", id));
-    if (data.has(id)) {
-        unregister_data(id);
-    }
-    data[id] = new_data;
-    registered.push_back(id);
-}
-
-void ItemData::unregister_data(StringName id) {
-    if (data.has(id)) {
-        data[id]->pre_unregister();
-        registered.erase(id);
-        data.erase(id);
-    }
-}
-void ItemData::unregister_all() {
-    while (!registered.is_empty()) {
-        unregister_data(registered[0]);
-    }
-}
 void ItemData::pre_unregister() {
     GDVIRTUAL_CALL(_pre_unregister);
-}
-
-Ref<ItemData> ItemData::get_data(StringName id) {
-    if (data.has(id)) {
-        return Ref<ItemData>(data[id]);
-    } else if (id == "empty") {
-        return memnew(ItemData);
-    } else {
-        ERR_FAIL_V_MSG(memnew(ItemData), vformat("Item ID '%s' not found.", id));
-    }
 }
 
 ItemUseResult ItemData::use_item(Ref<Item> item, Node *owner) {
@@ -108,24 +61,109 @@ ItemUseResult ItemData::use_item(Ref<Item> item, Node *owner) {
     }
 }
 
-Ref<AtlasTexture> ItemData::get_texture() {
-    if (atlas.is_null() && ResourceLoader::exists("res://texture-atlas.png", "Texture2D")) {
-        atlas = ResourceLoader::load("res://texture-atlas.png", "Texture2D");
-    }
-    Ref<AtlasTexture> tex = memnew(AtlasTexture);
-    tex->set_atlas(atlas);
-    tex->set_region(atlas_rect);
-    return tex;
-}
-
 ItemData::ItemData() {
     stack_size = 100;
     display_name = "";
-    atlas_rect = Rect2i(0, 0, 0, 0);
+    texture = Ref<Texture2D>(nullptr);
 }
 
 ItemData::~ItemData() {
     
+}
+
+ItemRegistry* ItemRegistry::singleton = nullptr;
+
+void ItemRegistry::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("register", "id", "data"), &ItemRegistry::register_data);
+    ClassDB::bind_method(D_METHOD("unregister", "id"), &ItemRegistry::unregister_data);
+    ClassDB::bind_method(D_METHOD("unregister_all"), &ItemRegistry::unregister_all);
+    ClassDB::bind_method(D_METHOD("get_data", "id"), &ItemRegistry::get_data);
+    ClassDB::bind_method(D_METHOD("get_all_data"), &ItemRegistry::get_all_data);
+    ClassDB::bind_method(D_METHOD("set_all_data", "data"), &ItemRegistry::set_all_data);
+
+    ADD_PROPERTY(PropertyInfo(Variant::DICTIONARY, "all_data"), "set_all_data", "get_all_data");
+}
+
+Ref<ItemData> ItemRegistry::get_data(StringName id) {
+    if (data.has(id)) {
+        return data[id];
+    }
+    else if (id == "empty") {
+        return memnew(ItemData);
+    }
+    else {
+        ERR_FAIL_V_MSG(memnew(ItemData), vformat("Item ID '%s' not found.", id));
+    }
+}
+
+void ItemRegistry::register_data(StringName id, Ref<ItemData> new_data) {
+    ERR_FAIL_NULL_MSG(new_data, vformat("Attempt to register null data to '%s'!", id));
+    if (data.has(id)) {
+        unregister_data(id);
+    }
+    data[id] = Ref<ItemData>(new_data);
+    registered.push_back(id);
+}
+
+void ItemRegistry::unregister_data(StringName id) {
+    if (data.has(id)) {
+        data[id]->pre_unregister();
+        registered.erase(id);
+        data.erase(id);
+    }
+}
+void ItemRegistry::unregister_all() {
+    while (!registered.is_empty()) {
+        unregister_data(registered[0]);
+    }
+}
+
+Dictionary ItemRegistry::get_all_data() {
+    Dictionary output;
+    for (int i = 0; i < (int)registered.size(); i++) {
+        StringName name = registered[i];
+        output[name] = data[name];
+    }
+    return output;
+}
+
+void ItemRegistry::set_all_data(Dictionary data) {
+    unregister_all();
+    Array keys = data.keys();
+    Array values = data.values();
+    for (int i = 0; i < keys.size(); i++) {
+        Variant key_variant = keys[i];
+        Variant value_variant = values[i];
+        ItemData* value = nullptr; // Needed in the if statement to allow checking the object-derived type and at the same time setting the value when valid.
+        if (Variant::can_convert(key_variant.get_type(), Variant::STRING_NAME) && value_variant.get_type() == Variant::OBJECT && (value = Object::cast_to<ItemData>(value_variant)) != nullptr) {
+            StringName key = key_variant;
+            register_data(key, value);
+        }
+    }
+}
+
+ItemUseResult ItemRegistry::use_item(Ref<Item> item, Node* owner) {
+    if (item.is_valid()) {
+        Ref<ItemData> data = item->get_data();
+        if (data.is_valid()) {
+            return data->use_item(item, owner);
+        }
+    }
+    return ITEM_USE_RESULT_FAIL;
+}
+
+ItemRegistry::ItemRegistry() {
+    data = HashMap<StringName, Ref<ItemData>>();
+    registered = LocalVector<StringName>();
+    singleton = this;
+}
+
+ItemRegistry::~ItemRegistry() {
+    if (singleton == this) {
+        singleton = nullptr;
+    }
+    registered.clear();
+    data.clear();
 }
 
 void Item::_bind_methods() {
@@ -181,7 +219,7 @@ ItemUseResult Item::use(Node *owner) {
     if (is_empty()) {
         return ITEM_USE_RESULT_FAIL;
     }
-    ItemUseResult use_result = get_data()->use_item(this, owner);
+    ItemUseResult use_result = ItemRegistry::get_singleton()->use_item(this, owner);
     if (use_result == ITEM_USE_RESULT_CONSUME) {
         set_count(get_count() - 1);
     }
@@ -189,7 +227,7 @@ ItemUseResult Item::use(Node *owner) {
 }
 
 Ref<ItemData> Item::get_data() const {
-    return ItemData::get_data(id);
+    return ItemRegistry::get_singleton()->get_data(id);
 }
 
 bool Item::is_empty() const {

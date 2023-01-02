@@ -7,7 +7,7 @@
 #include "inventory.h"
 #include "slot.h"
 #include "crafting_recipe.h"
-
+ItemRegistry* item_registry;
 void initialize_inventories_module(ModuleInitializationLevel p_level) {	
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
@@ -15,7 +15,9 @@ void initialize_inventories_module(ModuleInitializationLevel p_level) {
 
 	ClassDB::register_class<Item>();
 	ClassDB::register_class<ItemData>();
-	ItemData::register_hook();
+	ClassDB::register_class<ItemRegistry>();
+	item_registry = new ItemRegistry();
+	Engine::get_singleton()->add_singleton(Engine::Singleton("ItemRegistry", item_registry, "ItemRegistry"));
 	
 	ClassDB::register_class<LootTable>();
 	ClassDB::register_class<LootTableEntry>(true);
@@ -32,15 +34,13 @@ void initialize_inventories_module(ModuleInitializationLevel p_level) {
 	ClassDB::register_class<SlotHelper>();
 
 	ClassDB::register_class<CraftingRecipe>();
-
-	//ClassDB::register_class<ExampleVirtual>(true);
-	//ClassDB::register_abstract_class<ExampleAbstract>();
 }
 
 void uninitialize_inventories_module(ModuleInitializationLevel p_level) {
 	if (p_level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
-	ItemData::unregister_hook();
+	Engine::get_singleton()->remove_singleton("ItemRegistry");
+	delete item_registry;
 	CraftingRecipe::unregister_hook();
 }
